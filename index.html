@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>
+			Life Cycle of a Star
+		</title>
+		
+		<style>
+			body {
+				background-color: grey;
+			}
+			
+			h1 {
+				font-family: Arial;
+				color: white;
+			}
+			
+			h2 {
+				font-family: Arial;
+				color: white;
+			}
+			
+			p {
+				font-family: Arial;
+				color: white;
+			}
+		</style>
+	</head>
+	
+	<body>
+		<h1>
+			Life Cycle of A Star (Programmed By Will Punter)
+		</h1>
+		
+		<br/>
+		
+		<h2 id="titleText">Loading</h2>
+		
+		<br/>
+		
+		<p id="instructions"></p>
+		
+		<br/>
+		
+		<p id="massCounter">Total (Arbitrary) Mass: 0</p>
+		
+		<br/>
+		
+		<canvas id="myCanvas" width="640" height="480" style="background:black"></canvas>
+		
+		<br/>
+		
+		<script>
+			//load HTML elements 
+			var titleText = document.getElementById("titleText");
+			var instructions = document.getElementById("instructions");
+			var canvas = document.getElementById("myCanvas");
+			var ctx = canvas.getContext("2d");
+			var massCounter = document.getElementById("massCounter");
+			
+			//declare global variables 
+			var matter = [];
+			var stage = 0;
+			var gravityStrength = 10;
+			const centreOfGravity = [canvas.width / 2, canvas.height / 2];
+			var fusionCounter = 0;
+			var fusionThreshold = 10;
+			var starType = "";
+			var netMass = 0;
+			var lights = [];
+			var canFuse = true;
+			var lightCounter = 0;
+			var lightThreshold = 10;
+			var totalMass = 0;
+			
+			var stageTitles = [
+				"Stage 1 - Nebula",
+				"Stage 2 - Protostar",
+				"Stage 3 - Main Sequence",
+			];
+			
+			var lowMassStageTitles = [
+				"Low Mass Stage 4 - Red Giant",
+				"Low Mass Stage 5 - White Dwarf",
+				"Low Mass Stage 6 - Black Dwarf",
+			];
+			
+			var highMassStageTitles = [
+				"High Mass Stage 4 - Red Supergiant",
+				"High Mass Stage 5 - Supernova",
+				"High Mass Stage 6 - Neutron Star",
+			];
+			
+			var veryHighMassStageTitles = [
+				"Very High Mass Stage 4 - Red Supergiant",
+				"Very High Mass Stage 5 - Supernova",
+				"Very High Mass Stage 6 - Black Hole",
+			];
+			
+			var stageInstructions = [
+				"Hold down the left mouse to place hydrogen - create a cloud to form a nebula! Then click the button that will appear below when you have placed as much matter as you want. Make sure to spread the matter out evenly, so that very little escapes due to acceleration by gravity.",
+				"Watch the clumps come together through gravity - a protostar has been formed. The pressure on the matter is increasing. Soon it will start to fuse hydrogen together and form a main sequence star. When the button appears below, wait until all matter has reached the centre. If no button appears, refresh the page and try again. Make sure to make your nebula even around the centre!",
+				"Fusion is beginning to occur - the star is in its main sequence. It is very stable as graviational force and the outwards pressure from fusion roughly balance out. Fusion will continue (marked by yellow dots) until a substantial amount of the hydrogen has been used up. Click the button below the canvas/screen when it appears.",
+			];
+			
+			var lowMassStageInstructions = [
+				"A large amount of helium has been fused in the core of the star and hydrogen is running low. Helium and other heavier elements now fuse together transferring more energy to matter in the star. The balance between gravitational forces and outwards pressure has shifted and the star's volume increases.",
+				"As heavier elements form, the star collapses back in on itself. Fusion has stopped but the remains of the star glow white hot.",
+				"The remains of the star have cooled down. A black dwarf is left. Refresh the page to retry.",
+			];
+
+			var highMassStageInstructions = [
+				"A large amount of helium has been fused in the core of the star and hydrogen is running low. Helium and other heavier elements now fuse together transferring more energy to matter in the star. The balance between gravitational forces and outwards pressure has shifted and the star's volume increases.",
+				"As heavier and heavier elements fuse under the huge weight of the star, a huge outwards pressure is exerted. The star tears itself apart, scattering elements throughout the universe.",
+				"Only a tiny, incredibly dense piece of matter remains; it's similar to a giant neutron as all the nuclei have fused into one massive body. A neutron star. Refresh the page to retry.",
+			];		
+
+			var veryHighMassStageInstructions = [
+				"A large amount of helium has been fused in the core of the star and hydrogen is running low. Helium and other heavier elements now fuse together transferring more energy to matter in the star. The balance between gravitational forces and outwards pressure has shifted and the star's volume increases.",
+				"As heavier and heavier elements fuse under the huge weight of the star, a huge outwards pressure is exerted. The star tears itself apart, scattering elements throughout the universe.",
+				"A tiny point of near infinite density exists in space. It is so dense, with such a strong graviational pull that not even light can escape, as the space around it is bent so much that all paths lead to the black hole. Refresh the page to retry.",
+			];			
+			
+			//create input object 
+			var input = {
+				x: 0,
+				y: 0,
+				mouseDown: 0,
+			};
+			
+			//set stage function 
+			function setStage(s){
+				//set stage
+				stage = s - 1;
+				
+				//set title text and instructions text
+				if(stage < 3){
+					titleText.innerHTML = stageTitles[stage];
+					instructions.innerHTML = stageInstructions[stage];
+				} else {
+					//check star type 
+					if(starType == "lowMass"){
+						//low mass
+						titleText.innerHTML = lowMassStageTitles[stage - stageTitles.length];
+						instructions.innerHTML = lowMassStageInstructions[stage - stageTitles.length];
+					} else if(starType == "highMass"){
+						//high mass text 
+						titleText.innerHTML = highMassStageTitles[stage - stageTitles.length];
+						instructions.innerHTML = highMassStageInstructions[stage - stageTitles.length];
+					} else {
+						//very high mass text 
+						titleText.innerHTML = veryHighMassStageTitles[stage - stageTitles.length];
+						instructions.innerHTML = veryHighMassStageInstructions[stage - stageTitles.length];
+					};
+				};
+				
+				//delete next stage button if it exists 
+				if(document.getElementById("nextStage")){
+					//remove 
+					document.body.removeChild(document.getElementById("nextStage"));
+				};
+			};
+			
+			//next stage 
+			function nextStage(){
+				setStage(stage + 2);
+				
+				if(stage == 1){
+					//calculate net mass 
+					netMass = 0;
+					for(let i = 0; i < matter.length; i++){
+						netMass += matter[i].mass;
+					};
+					
+					//decide star type 
+					if(netMass < 250){
+						//low mass 
+						starType = "lowMass";
+					} else if (netMass < 500){
+						//high mass
+						starType = "highMass";
+					} else {
+						//very high mass 
+						starType = "veryHighMass";
+					};
+				};
+				
+				if(stage == 2 || stage == 3){
+					canFuse = true;
+				};
+				
+				if(stage == 4 && starType != "lowMass"){
+					for(let i = 0; i < matter.length; i++){
+						matter[i].transferEnergy();
+					};
+				};
+				
+				/*
+				if(stage == 3){
+					if(starType != "lowMass"){
+						//fusionThreshold /= 2;
+						//gravityStrength = 5;
+					} else {
+						//fusionThreshold = 10;
+						//gravityStrength = 7;
+					};
+				};
+				*/
+				
+				if(stage == 4){
+					//create button 
+					createNextStageButton();
+				};
+			};
+			
+			//create next stage button below 
+			function createNextStageButton(){
+				//create next stage 
+				let nextStageButton = document.createElement("button");
+				nextStageButton.setAttribute("id","nextStage");
+				nextStageButton.setAttribute("onclick","nextStage()");
+				nextStageButton.innerHTML = "Next Stage";
+				
+				if(!document.getElementById("nextStage")){
+					document.body.appendChild(nextStageButton);
+				};
+			};
+			
+			//create particle class 
+			class Particle {
+				constructor(x,y,atomicNo){
+					this.x = x;
+					this.y = y;
+					this.atomicNo = atomicNo;
+					this.mass = 2 * this.atomicNo;
+					this.radius = 1;
+					this.alive = true;
+					this.speed = 0;
+					this.angle = 0;
+					this.hspd = 0;
+					this.vspd = 0;
+					this.fusionEnergy = 1;
+					this.collisionPrecision = 20;
+					this.isColliding = false;
+					matter.push(this);
+				};
+				
+				transferEnergy(){
+					//find 20 closest particles 
+					let closestParticles = [null,null,null,null,null,null,null,null,null,null];
+					let closestDistances = [10000,10000,10000,1000,1000,10000,10000,10000,10000,10000];
+					
+					for(let i = 0; i < matter.length; i++){
+						if(matter[i] != this){
+							for(let j = 0; j < closestParticles.length; j++){
+								if(Math.sqrt(((matter[i].x - this.x)**2) + ((matter[i].y - this.y)**2)) < closestDistances[j]){
+									closestParticles[j] = matter[i];
+									closestDistances[j] = Math.sqrt(((matter[i].x - this.x)**2) + ((matter[i].y - this.y)**2));
+									break;
+								};
+							};
+						};
+					};
+					
+					//apply force to each particle 
+					for(let i = 0; i < closestParticles.length; i++){
+						if(closestParticles[i] != null){
+							let eAngle = Math.atan2(closestParticles[i].y - this.y, closestParticles[i].x - this.x);
+							
+							if(stage == 2 || stage == 3){
+								if(this.fusionEnergy * this.atomicNo > gravityStrength){
+									closestParticles[i].applyForce(gravityStrength, eAngle);
+								};
+							} else {
+								closestParticles[i].applyForce(this.fusionEnergy * this.atomicNo, eAngle);
+							};
+						};
+					};
+				};
+				
+				applyForce(magnitude, direction){
+					//resolve force into horizontal and vertical elements 
+					this.hspd += Math.cos(direction) * magnitude / this.mass;
+					this.vspd += Math.sin(direction) * magnitude / this.mass;
+				};
+				
+				distanceFromCentreOfGravity(){
+					let distance = Math.sqrt(((this.x - centreOfGravity[0])**2) + ((this.y - centreOfGravity[1])**2));
+					
+					if(distance == 0){
+						return 0.01;
+					} else {
+						return Math.sqrt(((this.x - centreOfGravity[0])**2) + ((this.y - centreOfGravity[1])**2));
+					};
+				};
+				
+				angleToCentreOfGravity(){
+					return Math.atan2(centreOfGravity[1] - this.y, centreOfGravity[0] - this.x);
+				};
+				
+				collideWithOtherParticles(){
+					//reset is colliding 
+					this.isColliding = false;
+				
+					//iterate through other particles
+					for(let i = 0; i < matter.length; i++){
+						//check that colliding instance isn't this 
+						if(matter[i] != this){
+							//check for collision 
+							if(Math.sqrt(((matter[i].x - this.x)**2) + ((matter[i].y - this.y)**2)) < this.radius + matter[i].radius){
+								//this.isColliding = true
+								this.isColliding = true;
+								
+								//move to the outside of the other circle 
+								//t = o/a
+								
+								//get the h distance between the circles 
+								let hDistance = this.x - matter[i].x;
+								let vDistance = this.y - matter[i].y;
+								let hFraction = hDistance / Math.sqrt(((this.x - matter[i].x)**2) + ((this.y - matter[i].y)**2));
+								let vFraction = vDistance / Math.sqrt(((this.x - matter[i].x)**2) + ((this.y - matter[i].y)**2));
+								this.x = matter[i].x + (1 + this.radius + matter[i].radius) * hFraction;
+								this.y = matter[i].y + (1 + this.radius + matter[i].radius) * vFraction;
+								
+								//matter[i].hspd += this.hspd;
+								//matter[i].vspd += this.vspd;
+								//matter[i].x += Math.sign(this.hspd);
+								//matter[i].y += Math.sign(this.vspd);
+								
+								//this.hspd = 0;
+								//this.vspd = 0;
+								this.hspd /= 3;
+								this.vspd /= 3;
+								matter[i].x += this.hspd * 2;
+								matter[i].y += this.vspd * 2;
+							};
+						};
+					};
+				};
+				
+				collideWithOtherParticlesRedGiant(){
+					//reset is colliding 
+					this.isColliding = false;
+					
+					//iterate through other particles
+					for(let i = 0; i < matter.length; i++){
+						//check that colliding instance isn't this 
+						if(matter[i] != this){
+							//check for collision 
+							if(Math.sqrt(((matter[i].x - this.x)**2) + ((matter[i].y - this.y)**2)) < (this.radius + matter[i].radius) * 3){
+								//this.isColliding = true
+								this.isColliding = true;
+								
+								//move to the outside of the other circle 
+								//t = o/a
+								
+								//get the h distance between the circles 
+								let hDistance = this.x - matter[i].x;
+								let vDistance = this.y - matter[i].y;
+								let hFraction = hDistance / Math.sqrt(((this.x - matter[i].x)**2) + ((this.y - matter[i].y)**2));
+								let vFraction = vDistance / Math.sqrt(((this.x - matter[i].x)**2) + ((this.y - matter[i].y)**2));
+								this.x = matter[i].x + ((1 + this.radius + matter[i].radius) * 3) * hFraction;
+								this.y = matter[i].y + ((1 + this.radius + matter[i].radius) * 3) * vFraction;
+								
+								//matter[i].hspd += this.hspd;
+								//matter[i].vspd += this.vspd;
+								//matter[i].x += Math.sign(this.hspd);
+								//matter[i].y += Math.sign(this.vspd);
+								
+								//this.hspd = 0;
+								//this.vspd = 0;
+								this.hspd /= 3;
+								this.vspd /= 3;
+								matter[i].x += this.hspd * 2;
+								matter[i].y += this.vspd * 2;
+							};
+						};
+					};
+				};
+				
+				collideWithOtherParticlesRedSuperGiant(){
+					//reset is colliding 
+					this.isColliding = false;
+					
+					//iterate through other particles
+					for(let i = 0; i < matter.length; i++){
+						//check that colliding instance isn't this 
+						if(matter[i] != this){
+							//check for collision 
+							if(Math.sqrt(((matter[i].x - this.x)**2) + ((matter[i].y - this.y)**2)) < (this.radius + matter[i].radius) * 5){
+								//this.isColliding = true
+								this.isColliding = true;
+								
+								//move to the outside of the other circle 
+								//t = o/a
+								
+								//get the h distance between the circles 
+								let hDistance = this.x - matter[i].x;
+								let vDistance = this.y - matter[i].y;
+								let hFraction = hDistance / Math.sqrt(((this.x - matter[i].x)**2) + ((this.y - matter[i].y)**2));
+								let vFraction = vDistance / Math.sqrt(((this.x - matter[i].x)**2) + ((this.y - matter[i].y)**2));
+								this.x = matter[i].x + ((1 + this.radius + matter[i].radius) * 5) * hFraction;
+								this.y = matter[i].y + ((1 + this.radius + matter[i].radius) * 5) * vFraction;
+								
+								//matter[i].hspd += this.hspd;
+								//matter[i].vspd += this.vspd;
+								//matter[i].x += Math.sign(this.hspd);
+								//matter[i].y += Math.sign(this.vspd);
+								
+								//this.hspd = 0;
+								//this.vspd = 0;
+								this.hspd /= 3;
+								this.vspd /= 3;
+								matter[i].x += this.hspd * 2;
+								matter[i].y += this.vspd * 2;
+							};
+						};
+					};
+				};
+				
+				update(){
+					//decide state 
+					if(stage == 1 || stage == 2 || stage == 3 || stage == 4){
+						//be drawn towards centre via gravitational force 
+					
+						//set hspd and vspd 
+						//this.hspd = Math.cos(this.angle) * this.speed;
+						//this.vspd = Math.sin(this.angle) * this.speed;
+						
+						//move 
+						for(let i = 0; i < this.collisionPrecision; i++){
+							if(!(stage == 4 && starType != "lowMass")){
+								//apply gravitational force
+								//check the distance away from the gravitational field 
+								if(this.distanceFromCentreOfGravity() > this.radius){
+									this.applyForce((gravityStrength * netMass/100 *  this.mass/(this.distanceFromCentreOfGravity()**2)) / this.collisionPrecision, this.angleToCentreOfGravity());
+								} else {
+									this.x = centreOfGravity[0];
+									this.y = centreOfGravity[1];
+								};
+							} else {
+								//apply gravitational force
+								//check the distance away from the gravitational field 
+								if(this.distanceFromCentreOfGravity() > this.radius){
+									this.applyForce((gravityStrength * netMass/100 *  this.mass/(this.distanceFromCentreOfGravity()**2)) / this.collisionPrecision, this.angleToCentreOfGravity() + Math.PI);
+								} else {
+									this.x = centreOfGravity[0];
+									this.y = centreOfGravity[1];
+								};
+							};
+							
+							//set angle 
+							this.angle = Math.atan2(this.vspd,this.hspd);
+							this.speed = this.vspd / Math.sin(this.angle);
+							
+							//move 
+							this.x += this.hspd / this.collisionPrecision;
+							this.y += this.vspd / this.collisionPrecision;
+							
+							//collide with other particles 
+							if(stage != 3){
+								this.collideWithOtherParticles();
+							} else {
+								if(starType == "lowMass"){
+									this.collideWithOtherParticlesRedGiant();
+								} else {
+									this.collideWithOtherParticlesRedSuperGiant();
+								};
+							};
+						};
+					};
+				};
+				
+				render(){
+					//draw circle
+					ctx.beginPath();
+					ctx.fillStyle = "#" + (this.atomicNo * 2343321 % 256).toString(16) + (this.atomicNo * 3425212 % 256).toString(16) + (this.atomicNo * 7429785765 % 256).toString(16);
+					ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+					ctx.fill();
+					ctx.closePath();
+				};
+			};
+			
+			//create lighting effect 
+			class Light {
+				constructor(x,y,radius){
+					this.x = x;
+					this.y = y;
+					this.radius = radius;
+					this.alive = true;
+					this.alpha = 1;
+					this.alphaDecay = 0.1;
+					lights.push(this);
+				};
+				
+				update(){
+					//decrease alpha 
+					this.alpha -= this.alphaDecay;
+					
+					if(this.alpha <= 0){
+						this.alpha = 0;
+						this.alive = false;
+					};
+				};
+				
+				render(){
+					//draw circle
+					ctx.beginPath();
+					ctx.globalAlpha = this.alpha;
+					
+					if(stage == 2){
+						ctx.fillStyle = "yellow";
+					} else if(stage == 3){
+						ctx.fillStyle = "red";
+					} else if(stage == 4){
+						ctx.fillStyle = "white";
+					};
+					
+					ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+					ctx.fill();
+					ctx.globalAlpha = 1;
+					ctx.closePath();
+				};
+			};	
+			
+			//fuse particles 
+			function fuseParticles(p1,p2){
+				p1.alive = false;
+				p2.alive = false;
+				new Particle(p1.x, p1.y, p1.atomicNo + p2.atomicNo);
+				matter[matter.length - 1].transferEnergy();
+				matter = matter.filter(x => x.alive);
+			
+				//create light 
+				if(stage == 2){
+					for(let i = 0; i < 5; i++){
+						new Light(p2.x + Math.random() * 64 - 32,p2.y + Math.random() * 64 - 32, p2.radius * 2);
+					};
+				} else if(stage == 3){
+					for(let i = 0; i < 10; i++){
+						new Light(p2.x + Math.random() * 80 - 40,p2.y + Math.random() * 80 - 40, p2.radius * 2);
+					};
+				};
+			};
+			
+			//mouse touching particle 
+			function mouseTouchingParticle(){
+				//check if mouse coordinates are within the radius of each particle 
+				for(let i = 0; i < matter.length; i++){
+					//check the distance between the particle and the mass - is it smaller than the radius 
+					if(Math.sqrt(((input.x - matter[i].x)**2) + ((input.y - matter[i].y)**2)) < matter[i].radius){
+						//return true 
+						return true;
+					};
+				};
+				
+				//no collision
+				return false;
+			};
+			
+			//create main loop 
+			function mainLoop(){
+				//clear screen
+				ctx.clearRect(0,0,canvas.width,canvas.height);
+				
+				//create white dwarf lights 
+				if(starType == "lowMass" && stage == 4){
+					lightCounter ++;
+					
+					if(lightCounter > lightThreshold){
+						lightCounter = 0;
+						
+						//create new light
+						for(let i = 0; i < 2; i++){
+							new Light(centreOfGravity[0] + Math.random() * 32 - 16,centreOfGravity[1] + Math.random() * 32 - 16, 4);
+						};
+					};
+				};
+				
+				//update matter
+				for(i = 0; i < matter.length; i++){
+					matter[i].update();
+				};
+				
+				//draw neutron star if necessary
+				if(stage >= 4 && starType == "highMass"){
+					//draw circle
+					ctx.beginPath();
+					ctx.fillStyle = "grey";
+					ctx.arc(centreOfGravity[0], centreOfGravity[1], 8, 0, 2 * Math.PI);
+					ctx.fill();
+					ctx.closePath();
+				} else if(stage >= 4 && starType == "veryHighMass") {
+					//draw circle
+					ctx.beginPath();
+					ctx.strokeStyle = "yellow";
+					ctx.lineWidth = 1;
+					ctx.arc(centreOfGravity[0], centreOfGravity[1], 4, 0, 2 * Math.PI);
+					ctx.stroke();
+					ctx.closePath();
+				};
+				
+				//render matter
+				for(i = 0; i < matter.length; i++){
+					matter[i].render();
+				};
+				
+				//update light
+				for(i = 0; i < lights.length; i++){
+					lights[i].update();
+				};
+				
+				//render lights
+				for(i = 0; i < lights.length; i++){
+					lights[i].render();
+				};
+				
+				//place matter 
+				if(input.mouseDown && stage == 0){
+					//check if mouse is touching matter 
+					if(mouseTouchingParticle() == false){
+						new Particle(input.x,input.y,1);
+						totalMass += 2;
+						massCounter.innerHTML = "Total Mass: " + totalMass;
+						
+						if(totalMass < 250){
+							massCounter.innerHTML += " (Low Mass)";
+						} else if(totalMass < 500){
+							massCounter.innerHTML += " (High Mass)";
+						} else {
+							massCounter.innerHTML += " (Very High Mass)";
+						};
+					};
+					
+					//create nextStage button
+					if(matter.length > 30){
+						createNextStageButton();
+					};
+				} else if(stage == 1 || stage == 2 || stage == 3){
+					if(stage == 1){
+						//check how many particles are colliding
+						let matterColliding = 0;
+						
+						for(let i = 0; i < matter.length; i++){
+							if(matter[i].distanceFromCentreOfGravity() < 100){
+								matterColliding ++;
+							};
+						};
+						
+						if(matterColliding / matter.length > 0.9){
+							//proceed 
+							createNextStageButton();
+						};
+					};
+					
+					if(stage == 2){
+						//should fuse 
+						if(canFuse == true){
+							//start fusion
+							fusionCounter ++;
+							
+							if(fusionCounter >= fusionThreshold){
+								fusionCounter = 0;
+								
+								//locate particles to fuse 
+								let innerMostParticle = null;
+								let innerMostParticleDistance = 1000000000;
+								let innerMostParticle2 = null;
+								let innerMostParticleDistance2 = 10000000000;
+								
+								for(let i = 0; i < matter.length; i++){
+									if(matter[i].atomicNo == 1 && matter[i].distanceFromCentreOfGravity() < innerMostParticleDistance){
+										innerMostParticle = matter[i];
+										innerMostParticleDistance = matter[i].distanceFromCentreOfGravity();
+									} else if(matter[i].atomicNo == 1 && matter[i].distanceFromCentreOfGravity() < innerMostParticleDistance2) {
+										innerMostParticle2 = matter[i];
+										innerMostParticleDistance2 = matter[i].distanceFromCentreOfGravity();
+									};
+								};
+								
+								//fuse innerMostParticle and innerMostParticle2 together 
+								fuseParticles(innerMostParticle, innerMostParticle2);
+							};
+							
+							//check if ready for red giant/supergiant phase 
+							let hydrogenCount = 0;
+							let heliumCount = 0;
+							
+							for(let i = 0; i < matter.length; i++){
+								if(matter[i].atomicNo == 1){
+									hydrogenCount ++;
+								} else {
+									heliumCount ++;
+								};
+							};
+							
+							if(heliumCount / matter.length > 0.3){ //1/3 of particles are helium
+								//stop fusing 
+								canFuse = false;
+								createNextStageButton();
+							};
+						};
+					};
+					
+					if(stage == 3){
+						//should fuse 
+						if(canFuse == true){
+							//start fusion
+							fusionCounter ++;
+							
+							if(fusionCounter >= fusionThreshold){
+								fusionCounter = 0;
+								
+								//locate particles to fuse 
+								let innerMostParticle = null;
+								let innerMostParticleDistance = 1000000000;
+								let innerMostParticle2 = null;
+								let innerMostParticleDistance2 = 10000000000;
+								
+								for(let i = 0; i < matter.length; i++){
+									if((matter[i].atomicNo == 1 || matter[i].atomicNo == 2) && matter[i].distanceFromCentreOfGravity() < innerMostParticleDistance){
+										innerMostParticle = matter[i];
+										innerMostParticleDistance = matter[i].distanceFromCentreOfGravity();
+									} else if((matter[i].atomicNo == 1 || matter[i].atomicNo == 2) && matter[i].distanceFromCentreOfGravity() < innerMostParticleDistance2) {
+										innerMostParticle2 = matter[i];
+										innerMostParticleDistance2 = matter[i].distanceFromCentreOfGravity();
+									};
+								};
+								
+								//fuse innerMostParticle and innerMostParticle2 together 
+								if(innerMostParticle != null && innerMostParticle2 != null){
+									fuseParticles(innerMostParticle, innerMostParticle2);
+								} else {
+									canFuse = false;
+									createNextStageButton();
+								};
+							};
+							
+							//check if ready for red giant/supergiant phase 
+							let hydrogenCount = 0;
+							let heliumCount = 0;
+							
+							for(let i = 0; i < matter.length; i++){
+								if(matter[i].atomicNo == 1){
+									hydrogenCount ++;
+								} else {
+									heliumCount ++;
+								};
+							};
+							
+							if(heliumCount / matter.length > 0.8){ //1/3 of particles are helium
+								//stop fusing 
+								canFuse = false;
+								createNextStageButton();
+							};
+						};
+						
+					};
+				};
+				
+				//filter dead matter 
+				matter = matter.filter(x => x.alive);
+				
+				//filter dead lights
+				lights = lights.filter(x => x.alive);
+				
+				//call next frame 
+				requestAnimationFrame(mainLoop);
+			};
+			
+			//get input 
+			canvas.addEventListener("mousedown",(e) => {
+				//prevent default 
+				e.preventDefault();
+				
+				//set input.mouseDown to true 
+				input.mouseDown = true;
+			});
+			
+			canvas.addEventListener("mouseup",(e) => {
+				//prevent default 
+				e.preventDefault();
+				
+				//set input.mouseDown to true 
+				input.mouseDown = false;
+			});
+			
+			canvas.addEventListener("mousemove",(e) => {
+				//prevent default 
+				e.preventDefault();
+				
+				//get mouse x and y 
+				input.x = e.x - canvas.offsetLeft - window.pageXOffset;
+				input.y = e.y - canvas.offsetTop + window.pageYOffset;	
+			});
+			
+			//set first stage 
+			setStage(1);
+			
+			//start main loop 
+			mainLoop();
+		</script>
+	</body>
+</html>
